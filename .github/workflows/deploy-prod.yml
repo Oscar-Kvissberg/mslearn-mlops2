@@ -32,13 +32,52 @@ jobs:
           pip install azure-ai-ml azure-identity
 
       - name: Sign in to Azure
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Install Azure ML CLI
         run: |
           az extension add -n ml -y
+
+      - name: Ensure Azure resource providers are registered
+        run: |
+          SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+          echo "Using subscription: $SUBSCRIPTION_ID"
+
+          PROVIDERS=(
+            Microsoft.MachineLearningServices
+            Microsoft.Network
+            Microsoft.ContainerRegistry
+            Microsoft.Storage
+            Microsoft.KeyVault
+          )
+
+          for ns in "${PROVIDERS[@]}"; do
+            state=$(az provider show -n "$ns" --query registrationState -o tsv)
+            echo "$ns: $state"
+            if [ "$state" != "Registered" ]; then
+              echo "Registering $ns..."
+              az provider register -n "$ns"
+            fi
+          done
+
+          echo "Waiting for providers to reach Registered state..."
+          for ns in "${PROVIDERS[@]}"; do
+            for attempt in $(seq 1 30); do
+              state=$(az provider show -n "$ns" --query registrationState -o tsv)
+              echo "$ns (attempt $attempt/30): $state"
+              if [ "$state" = "Registered" ]; then
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "::error::$ns is still '$state'. Managed online endpoints require Registered providers." >&2
+                echo "Run locally: az account set --subscription $SUBSCRIPTION_ID && az provider register -n $ns" >&2
+                exit 1
+              fi
+              sleep 30
+            done
+          done
 
       - name: Detect Azure ML workspace
         id: detect
@@ -68,7 +107,7 @@ jobs:
             --subscription-id "${{ steps.detect.outputs.subscription_id }}" \
             --resource-group "${{ steps.detect.outputs.resource_group }}" \
             --workspace "${{ steps.detect.outputs.workspace }}" \
-            --endpoint-name "diabetes-endpoint" \
+            --endpoint-name "diabetes-endpoint-v2" \
             --deployment-name "blue"
 
       - name: Comment deployment result on pull request
