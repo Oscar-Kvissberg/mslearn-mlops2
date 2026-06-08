@@ -20,6 +20,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          ref: refs/pull/${{ github.event.issue.number }}/head
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -51,6 +53,11 @@ jobs:
             Microsoft.ContainerRegistry
             Microsoft.Storage
             Microsoft.KeyVault
+            Microsoft.PolicyInsights
+            Microsoft.Cdn
+            Microsoft.Notebooks
+            Microsoft.ContainerService
+            Microsoft.App
           )
 
           for ns in "${PROVIDERS[@]}"; do
@@ -107,7 +114,7 @@ jobs:
             --subscription-id "${{ steps.detect.outputs.subscription_id }}" \
             --resource-group "${{ steps.detect.outputs.resource_group }}" \
             --workspace "${{ steps.detect.outputs.workspace }}" \
-            --endpoint-name "diabetes-endpoint-v2" \
+            --endpoint-name "diabetes-ep-${{ github.run_id }}" \
             --deployment-name "blue"
 
       - name: Comment deployment result on pull request

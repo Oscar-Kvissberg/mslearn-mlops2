@@ -31,24 +31,7 @@ def get_ml_client(subscription_id: str, resource_group: str, workspace: str) -> 
     )
 
 
-def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEndpoint:
-    unique_suffix = datetime.datetime.now().strftime("%m%d%H%M%f")
-    name = endpoint_name or f"endpoint-{unique_suffix}"
-
-    try:
-        endpoint = ml_client.online_endpoints.get(name=name)
-        state = (endpoint.provisioning_state or "").lower()
-        if state == "succeeded":
-            return endpoint
-
-        print(
-            f"Endpoint '{name}' is in state '{endpoint.provisioning_state}'. "
-            "Deleting and recreating..."
-        )
-        ml_client.online_endpoints.begin_delete(name=name).result()
-    except Exception:
-        pass
-
+def _create_endpoint(ml_client: MLClient, name: str) -> ManagedOnlineEndpoint:
     endpoint = ManagedOnlineEndpoint(
         name=name,
         description="Online endpoint for MLflow diabetes model",
@@ -65,6 +48,30 @@ def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEnd
                 file=sys.stderr,
             )
         raise
+
+
+def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEndpoint:
+    unique_suffix = datetime.datetime.now().strftime("%m%d%H%M%S")
+    base_name = endpoint_name or f"endpoint-{unique_suffix}"
+    name = base_name
+
+    try:
+        endpoint = ml_client.online_endpoints.get(name=base_name)
+        state = (endpoint.provisioning_state or "").lower()
+        if state == "succeeded":
+            return endpoint
+
+        # Failed or stuck endpoints cannot be reused reliably in lab subscriptions.
+        name = f"{base_name}-{unique_suffix}"
+        print(
+            f"Endpoint '{base_name}' is in state '{endpoint.provisioning_state}'. "
+            f"Creating a fresh endpoint as '{name}'..."
+        )
+    except HttpResponseError as exc:
+        if exc.status_code != 404:
+            raise
+
+    return _create_endpoint(ml_client, name)
 
 
 def create_or_update_deployment(
