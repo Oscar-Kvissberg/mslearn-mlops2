@@ -89,7 +89,6 @@ def create_or_update_deployment(
         name=deployment_name,
         endpoint_name=endpoint_name,
         model=model,
-        environment="azureml:AzureML-sklearn-0.24-ubuntu18.04-py37-cpu@latest",
         instance_type="Standard_F2s_v2",
         instance_count=1,
         liveness_probe=ProbeSettings(
