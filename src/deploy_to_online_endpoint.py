@@ -1,6 +1,6 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml import MLClient
-from azure.ai.ml.entities import Environment, ManagedOnlineEndpoint, ManagedOnlineDeployment, Model
+from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Model
 from azure.ai.ml.constants import AssetTypes
 from azure.core.exceptions import HttpResponseError
 
@@ -79,12 +79,6 @@ def create_or_update_deployment(
     endpoint_name: str,
     deployment_name: str,
 ) -> ManagedOnlineDeployment:
-    inference_env = Environment(
-        conda_file="./model/conda.yaml",
-        image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest",
-        name=f"diabetes-inference-{datetime.datetime.now().strftime('%m%d%H%M%S')}",
-    )
-
     model = Model(
         path="./model",
         type=AssetTypes.MLFLOW_MODEL,
@@ -95,7 +89,6 @@ def create_or_update_deployment(
         name=deployment_name,
         endpoint_name=endpoint_name,
         model=model,
-        environment=inference_env,
         instance_type="Standard_F2s_v2",
         instance_count=1,
     )
