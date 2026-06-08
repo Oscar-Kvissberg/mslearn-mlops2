@@ -30,20 +30,30 @@ def get_ml_client(subscription_id: str, resource_group: str, workspace: str) -> 
 
 
 def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEndpoint:
+    unique_suffix = datetime.datetime.now().strftime("%m%d%H%M%f")
+    name = endpoint_name or f"endpoint-{unique_suffix}"
+
     try:
-        endpoint = ml_client.online_endpoints.get(name=endpoint_name)
-        return endpoint
-    except Exception:
-        unique_suffix = datetime.datetime.now().strftime("%m%d%H%M%f")
-        name = endpoint_name or f"endpoint-{unique_suffix}"
+        endpoint = ml_client.online_endpoints.get(name=name)
+        state = (endpoint.provisioning_state or "").lower()
+        if state == "succeeded":
+            return endpoint
 
-        endpoint = ManagedOnlineEndpoint(
-            name=name,
-            description="Online endpoint for MLflow diabetes model",
-            auth_mode="key",
+        print(
+            f"Endpoint '{name}' is in state '{endpoint.provisioning_state}'. "
+            "Deleting and recreating..."
         )
+        ml_client.online_endpoints.begin_delete(name=name).result()
+    except Exception:
+        pass
 
-        return ml_client.begin_create_or_update(endpoint).result()
+    endpoint = ManagedOnlineEndpoint(
+        name=name,
+        description="Online endpoint for MLflow diabetes model",
+        auth_mode="key",
+    )
+
+    return ml_client.begin_create_or_update(endpoint).result()
 
 
 def create_or_update_deployment(
