@@ -1,6 +1,11 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml import MLClient
-from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Model
+from azure.ai.ml.entities import (
+    CodeConfiguration,
+    ManagedOnlineEndpoint,
+    ManagedOnlineDeployment,
+    Model,
+)
 from azure.ai.ml.constants import AssetTypes
 from azure.core.exceptions import HttpResponseError
 
@@ -80,15 +85,19 @@ def create_or_update_deployment(
     deployment_name: str,
 ) -> ManagedOnlineDeployment:
     model = Model(
-        path="./model",
-        type=AssetTypes.MLFLOW_MODEL,
-        description="MLflow diabetes classification model",
+        path="./model/model.pkl",
+        type=AssetTypes.CUSTOM_MODEL,
+        description="Diabetes classification model",
     )
 
     deployment = ManagedOnlineDeployment(
         name=deployment_name,
         endpoint_name=endpoint_name,
         model=model,
+        code_configuration=CodeConfiguration(
+            code="./src",
+            scoring_script="score.py",
+        ),
         environment="azureml:AzureML-sklearn-0.24-ubuntu18.04-py37-cpu@latest",
         instance_type="Standard_D2as_v4",
         instance_count=1,
