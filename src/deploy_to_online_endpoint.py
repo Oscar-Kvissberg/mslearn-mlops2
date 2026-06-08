@@ -2,9 +2,11 @@ from azure.identity import DefaultAzureCredential
 from azure.ai.ml import MLClient
 from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Model
 from azure.ai.ml.constants import AssetTypes
+from azure.core.exceptions import HttpResponseError
 
 import argparse
 import datetime
+import sys
 
 
 def parse_args():
@@ -53,7 +55,16 @@ def ensure_endpoint(ml_client: MLClient, endpoint_name: str) -> ManagedOnlineEnd
         auth_mode="key",
     )
 
-    return ml_client.begin_create_or_update(endpoint).result()
+    try:
+        return ml_client.begin_create_or_update(endpoint).result()
+    except HttpResponseError as exc:
+        if "SubscriptionNotRegistered" in str(exc):
+            print(
+                "Azure resource providers are not fully registered for this subscription. "
+                "Register Microsoft.Network and related providers, then retry deploy.",
+                file=sys.stderr,
+            )
+        raise
 
 
 def create_or_update_deployment(
