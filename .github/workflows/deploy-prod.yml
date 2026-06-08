@@ -114,7 +114,7 @@ jobs:
             --subscription-id "${{ steps.detect.outputs.subscription_id }}" \
             --resource-group "${{ steps.detect.outputs.resource_group }}" \
             --workspace "${{ steps.detect.outputs.workspace }}" \
-            --endpoint-name "diabetes-ep-${{ github.run_id }}" \
+            --endpoint-name "diabetes-endpoint-v2" \
             --deployment-name "blue"
 
       - name: Comment deployment result on pull request
