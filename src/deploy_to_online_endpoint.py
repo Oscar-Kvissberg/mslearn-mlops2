@@ -1,6 +1,6 @@
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml import MLClient
-from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Model
+from azure.ai.ml.entities import ManagedOnlineEndpoint, ManagedOnlineDeployment, Model, ProbeSettings
 from azure.ai.ml.constants import AssetTypes
 from azure.core.exceptions import HttpResponseError
 
@@ -89,8 +89,23 @@ def create_or_update_deployment(
         name=deployment_name,
         endpoint_name=endpoint_name,
         model=model,
+        environment="azureml:AzureML-sklearn-0.24-ubuntu18.04-py37-cpu@latest",
         instance_type="Standard_F2s_v2",
         instance_count=1,
+        liveness_probe=ProbeSettings(
+            initial_delay=300,
+            period=10,
+            timeout=2,
+            success_threshold=1,
+            failure_threshold=30,
+        ),
+        readiness_probe=ProbeSettings(
+            initial_delay=300,
+            period=10,
+            timeout=2,
+            success_threshold=1,
+            failure_threshold=30,
+        ),
     )
 
     return ml_client.online_deployments.begin_create_or_update(deployment).result()
